@@ -113,6 +113,7 @@ def httpCmd(cmd){
     def porthex = convertPortToHex(port)
     
     //device.deviceNetworkId = "$hosthex:$porthex" 
+    device.deviceNetworkId = "${macAddr}" 
     
     def hubAction = new physicalgraph.device.HubAction(
         method: "GET",
