@@ -1,4 +1,3 @@
-
 metadata {
     definition (name: "Tasmota Sonoff Basic Wifi Outlet", namespace: "LJ", author: "LJ", vid:"tasmota-sonoff-basic-switch") {
         capability "Actuator"
@@ -134,4 +133,3 @@ def checkDevice() {
     state.responseReceived = false
     tasmotaHttpCmd("Power")
 }
-
