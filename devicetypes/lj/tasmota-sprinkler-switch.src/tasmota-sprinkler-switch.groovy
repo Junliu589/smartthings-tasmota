@@ -175,6 +175,27 @@ def updated() {
 
 def initialize() {
     state.responseReceived = true;
+
+    def jsonstr1 = JsonOutput.toJson([Arm: 1, Mode: 0, Time: "00:00", Window: 0, Days: "1111111", Repeat: 1, Output: 1, Action: 1])
+    
+    log.debug "timer1 json: $jsonstr"
+    
+    tasmotaHttpCmd("Timer1%20$jsonstr1")
+    
+    def jsonstr2 = JsonOutput.toJson([Arm: 1, Mode: 0, Time: "12:00", Window: 0, Days: "1111111", Repeat: 1, Output: 1, Action: 0])
+    
+    log.debug "timer2 json: $jsonstr"
+    
+    tasmotaHttpCmd("Timer2%20$jsonstr2") 
+    
+    tasmotaHttpCmd("Timers%20on")
+    
+    tasmotaHttpCmd("TimeDST%200,2,3,1,2,-360")
+    
+    tasmotaHttpCmd("TimeSTD%200,1,11,1,2,-420")
+    
+    tasmotaHttpCmd("Timezone%2099")
+
 }
 
 def convertIPtoHex(ipAddress) { 
