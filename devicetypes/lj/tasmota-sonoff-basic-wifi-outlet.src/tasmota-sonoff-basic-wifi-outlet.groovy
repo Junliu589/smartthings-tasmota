@@ -55,7 +55,6 @@ metadata {
 
 def installed() {
     initialize()
-    runEvery1Minute(checkDevice)
 }
 
 def updated() {
@@ -63,8 +62,23 @@ def updated() {
 }
 
 def initialize() {
-    state.responseReceived = true;
+    device.deviceNetworkId = macAddr.tokenize( ':' ).collect{it.toUpperCase()}.join()
+    state.responseReceived = false
+    state.offlineMinutes = 0
 
+    if (device.currentValue("ipAddr"))
+    {
+        configDevice()
+    }
+    else
+    {
+        runIn(60, discover())
+    }
+    
+    runEvery1Minute(checkDevice)
+}
+
+def configDevice() {
     tasmotaHttpCmd("TimeDST%200,2,3,1,2,-360")
     
     tasmotaHttpCmd("TimeSTD%200,1,11,1,2,-420")
@@ -76,6 +90,23 @@ def initialize() {
     tasmotaHttpCmd("Latitude%2038.94552741")
 }
 
+def discover() {
+    for (int i=2; i<100; i++) {
+    
+    log.debug "Sent to 192.168.0.${i}"
+    
+    def hubAction = new physicalgraph.device.HubAction(
+        method: "GET",
+        path: "/cm?user=${username}&password=${password}&cmnd=State",
+        headers: [
+            HOST: "192.168.0.${i}:80"
+        ]
+    )
+    
+    sendHubCommand(hubAction)
+    }
+}
+
 def convertIPtoHex(ipAddress) { 
     ipAddress.tokenize( '.' ).collect {String.format( '%02X', it.toInteger())}.join()
 }
@@ -85,7 +116,6 @@ def convertPortToHex(port) {
 }
 
 def tasmotaHttpCmd(cmd){
-    device.deviceNetworkId = macAddr.tokenize( ':' ).collect{it.toUpperCase()}.join()
     def deviceIP = device.currentValue("ipAddr")
     
     def hubAction = new physicalgraph.device.HubAction(
@@ -174,7 +204,24 @@ def checkDevice() {
     if (!state.responseReceived)
     {
         //No response recevied from the last check command - it's offline
-        sendEvent(name: "deviceStatus", value: "offline")
+        state.offlineMinutes++
+        
+        //When no response >=2 mins, set the status to Offline
+        if (state.offlineMinutes >= 2)
+        {
+            sendEvent(name: "deviceStatus", value: "offline")
+        }
+        
+        //When no response > 60 mins, suspect the IP is changed, trying to discover again
+        if (state.offlineMinutes >= 60)
+        {
+            discover()
+            state.offlineMinutes = 0
+        }
+    }
+    else
+    {
+        state.offlineMinutes = 0
     }
     
     state.responseReceived = false

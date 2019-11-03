@@ -87,7 +87,7 @@ def discover() {
     
     def hubAction = new physicalgraph.device.HubAction(
         method: "GET",
-        path: "/cm?user=${username}&password=${password}&cmnd=Power",
+        path: "/cm?user=${username}&password=${password}&cmnd=State",
         headers: [
             HOST: "192.168.0.${i}:80"
         ]

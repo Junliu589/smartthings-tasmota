@@ -129,6 +129,8 @@ def installed() {
 
 def updated() {
     initialize()
+    runEvery1Minute(checkDevice)
+    runEvery1Hour(checkTimer)
 }
 
 def initialize() {
