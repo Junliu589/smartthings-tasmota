@@ -163,6 +163,9 @@ def initialize() {
     
     tasmotaHttpCmd("Timezone%2099")
 
+    tasmotaHttpCmd("Longitude%20-104.73823299")
+    
+    tasmotaHttpCmd("Latitude%2038.94552741")
 }
 
 def convertIPtoHex(ipAddress) { 
