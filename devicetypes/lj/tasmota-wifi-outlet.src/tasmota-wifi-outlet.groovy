@@ -106,6 +106,9 @@ def discover() {
     
     sendHubCommand(hubAction)
     }
+    
+    //Try to config the device after the discovery
+    runIn(60, configDevice)
 }
 
 def convertIPtoHex(ipAddress) { 

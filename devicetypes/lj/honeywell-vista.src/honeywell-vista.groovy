@@ -47,27 +47,22 @@ metadata {
             state "on", label:"Chime", action:"chime", icon:"st.security.alarm.off", backgroundColor: "#79b821"
             state "off", label:"Chime", action:"chime", icon:"st.security.alarm.off", backgroundColor: "#C0C0C0"
         }
-
     }
 
     main(["Status"])
-    details(["Status","ArmAway","ArmStay","Disarm","Chime"])
+    details(["Status","ArmAway","ArmStay","Disarm","Chime","wifi","ip"])
     
     preferences {
         input name: "macAddr", type: "text", title: "MAC Address", description: "MAC Address of the device", required: true,displayDuringSetup: true
-        input name: "ipAddr", type: "text", title: "IP Address", description: "IP Address of the device", required: true,displayDuringSetup: true
-        input name: "port", type: "number", title: "Port", description: "Port of the device",  defaultValue: 80 ,displayDuringSetup: true
         input name: "username", type: "text", title: "Username", description: "Username to manage the device", required: false, displayDuringSetup: true
         input name: "password", type: "password", title: "Password", description: "Username to manage the device", required: false, displayDuringSetup: true
         input name: "enIpAddr", type: "text", title: "ENVL Board IP Address", description: "IP Address of EVL Board", required: true,displayDuringSetup: true
         input name: "vistaPasscode", type: "password", title: "VISTA Passcode", description: "User Passcode of Honeywell Vista Pannel", required: false,displayDuringSetup: true
     }
-
 }
 
 def installed() {
     initialize()
-    runEvery1Minute(checkDevice)
 }
 
 def updated() {
@@ -75,51 +70,68 @@ def updated() {
 }
 
 def initialize() {
-    device.deviceNetworkId = "${macAddr}" 
     state.responseReceived = true
-    configEvl()
-}
-
-def convertIPtoHex(ipAddress) { 
-    ipAddress.tokenize( '.' ).collect {String.format( '%02X', it.toInteger())}.join()
-}
-
-def convertPortToHex(port) {
-    port.toString().format( '%04X', port.toInteger() )
+    state.offlineMinutes = 0
+    
+    if (device.currentValue("ipAddr"))
+    {
+        configEvl()
+    }
+    else
+    {
+        runIn(30, discover)
+    }
+    
+    runEvery1Minute(checkDevice)
 }
 
 def configEvl(){
-    def hosthex = convertIPtoHex(ipAddr)
-    def porthex = convertPortToHex(port)
-    
+    device.deviceNetworkId = macAddr.tokenize( ':' ).collect{it.toUpperCase()}.join()
+
     def hub = location.hubs[0]
-    
-    //device.deviceNetworkId = "$hosthex:$porthex" 
+    def deviceIP = device.currentValue("ipAddr")
     
     def hubAction = new physicalgraph.device.HubAction(
         method: "GET",
         path: "/en?user=${username}&password=${password}&enip=${enIpAddr}&hubip=${hub.localIP}",
         headers: [
-            HOST: "${ipAddr}:${port}"
+            HOST: "$deviceIP:80"
         ]
     )
     
     sendHubCommand(hubAction)
 }
 
+def discover() {
+    device.deviceNetworkId = macAddr.tokenize( ':' ).collect{it.toUpperCase()}.join()
+
+    for (int i=2; i<100; i++) {
+    
+    log.debug "Sent to 192.168.0.${i}"
+    
+    def hubAction = new physicalgraph.device.HubAction(
+        method: "GET",
+        path: "/cm?user=${username}&password=${password}&cmnd=State",
+        headers: [
+            HOST: "192.168.0.${i}:80"
+        ]
+    )
+    
+    sendHubCommand(hubAction)
+    }
+    
+    //Try to config the device after the discovery
+    runIn(60, configEvl)
+}
 
 def httpCmd(cmd){
-    def hosthex = convertIPtoHex(ipAddr)
-    def porthex = convertPortToHex(port)
-    
-    //device.deviceNetworkId = "$hosthex:$porthex" 
-    device.deviceNetworkId = "${macAddr}" 
+    def deviceIP = device.currentValue("ipAddr")
     
     def hubAction = new physicalgraph.device.HubAction(
         method: "GET",
         path: "/ec?user=${username}&password=${password}&cmd=${cmd}",
         headers: [
-            HOST: "${ipAddr}:${port}"
+            HOST: "$deviceIP:80"
         ]
     )
     
@@ -214,6 +226,23 @@ def parse(description) {
 
     }
     
+    //Get the device IP
+    def ipStr = msg?.ip
+    
+    if (ipStr)
+    {
+        def ip = "";
+        for (int i=0; i<8; i+=2)
+        {
+            if (ip != "")
+                ip += "."
+            ip += Integer.parseInt(ipStr.substring(i, i+2), 16).toString()
+        }
+
+        log.debug "Device IP: $ip"
+        sendEvent(name:"ipAddr", value: "$ip", displayed: false)
+    }
+
 }
 
 
@@ -246,9 +275,24 @@ def checkDevice() {
 
     if (!state.responseReceived)
     {
-        sendEvent(name: "partitionStatus", value: "offline")
-        device.deviceNetworkId = "${macAddr}"
+        //No response recevied from the last check command - it's offline
+        state.offlineMinutes++
+        sendEvent(name: "deviceStatus", value: "offline")
+        
+        //Try to config the ENVL 
         configEvl()
+        
+        //When no response > 60 mins, suspect the IP is changed, trying to discover again
+        if (state.offlineMinutes >= 60)
+        {
+            discover()
+            state.offlineMinutes = 0
+        }
     }
-    state.responseReceived = false;
+    else
+    {
+        state.offlineMinutes = 0
+    }
+    
+    state.responseReceived = false
 }
