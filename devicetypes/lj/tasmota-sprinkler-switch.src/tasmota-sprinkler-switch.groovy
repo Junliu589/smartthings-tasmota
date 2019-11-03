@@ -10,7 +10,7 @@ metadata {
     }
 
     attribute "deviceStatus", "enum", ["offline", "on", "off"]
-    attribute "deivceTime", "string"
+    attribute "ipAddr", "string"
     
     attribute "sun", "enum", ["1", "0"]
     attribute "mon", "enum", ["1", "0"]
@@ -20,20 +20,6 @@ metadata {
     attribute "fri", "enum", ["1", "0"]
     attribute "sat", "enum", ["1", "0"]
     
-    /*command "sunon"
-    command "sunoff"
-    command "monon"
-    command "monoff"
-    command "tueon"
-    command "tueoff"
-    command "wedon"
-    command "wedoff"
-    command "thuon"
-    command "thuoff"
-    command "frion"
-    command "frioff"
-    command "saton"
-    command "satoff"*/
     command "saveTimer"
     command "sunToggle"
     command "monToggle"
@@ -60,41 +46,6 @@ metadata {
             state "default", label:"", action:"refresh.refresh", icon:"st.secondary.refresh"
         }
 
-        /*standardTile("sunday", "device.sun", inactiveLabel: false, decoration: "flat", width: 1, height: 1) {
-            state "1", label:"Sun", action:"sunoff", backgroundColor:"#00a0dc", icon: "st.Outdoor.outdoor12"
-            state "0", label:"Sun", action:"sunon", backgroundColor:"#ffffff", icon: "st.Outdoor.outdoor12"
-        }
-        
-        standardTile("monday", "device.mon", inactiveLabel: false, decoration: "flat", width: 1, height: 1) {
-            state "1", label:"Mon", action:"monoff", backgroundColor:"#00a0dc", icon: "st.Outdoor.outdoor12"
-            state "0", label:"Mon", action:"monon", backgroundColor:"#ffffff", icon: "st.Outdoor.outdoor12"
-        }
-
-        standardTile("tuesday", "device.tue", inactiveLabel: false, decoration: "flat", width: 1, height: 1) {
-            state "1", label:"Tue", action:"tueoff", backgroundColor:"#00a0dc", icon: "st.Outdoor.outdoor12"
-            state "0", label:"Tue", action:"tueon", backgroundColor:"#ffffff", icon: "st.Outdoor.outdoor12"
-        }
-
-        standardTile("wednesday", "device.wed", inactiveLabel: false, decoration: "flat", width: 1, height: 1) {
-            state "1", label:"Wed", action:"wedoff", backgroundColor:"#00a0dc", icon: "st.Outdoor.outdoor12"
-            state "0", label:"Wed", action:"wedon", backgroundColor:"#ffffff", icon: "st.Outdoor.outdoor12"
-        }
-
-        standardTile("thursday", "device.thu", inactiveLabel: false, decoration: "flat", width: 1, height: 1) {
-            state "1", label:"Thu", action:"thuoff", backgroundColor:"#00a0dc", icon: "st.Outdoor.outdoor12"
-            state "0", label:"Thu", action:"thuon", backgroundColor:"#ffffff", icon: "st.Outdoor.outdoor12"
-        }
-        
-        standardTile("friday", "device.fri", inactiveLabel: false, decoration: "flat", width: 1, height: 1) {
-            state "1", label:"Fri", action:"frioff", backgroundColor:"#00a0dc", icon: "st.Outdoor.outdoor12"
-            state "0", label:"Fri", action:"frion", backgroundColor:"#ffffff", icon: "st.Outdoor.outdoor12"
-        }
-
-        standardTile("saturday", "device.sat", inactiveLabel: false, decoration: "flat", width: 1, height: 1) {
-            state "1", label:"Sat", action:"satoff", backgroundColor:"#00a0dc", icon: "st.Outdoor.outdoor12"
-            state "0", label:"Sat", action:"saton", backgroundColor:"#ffffff", icon: "st.Outdoor.outdoor12"
-        }*/
-        
         valueTile("sunday", "device.sun", inactiveLabel: false, decoration: "flat", width: 1, height: 1) {
         state "val", label:'SUN', action:"sunToggle", defaultState: true, backgroundColors: [
             [value: 0, color: "#ffffff"],
@@ -148,17 +99,24 @@ metadata {
             state "default", label:"SAVE", action:"saveTimer", backgroundColor:"#e86d13"
         }
 
+        valueTile("wifi", "device.deviceWIFI", inactiveLabel: false, decoration: "flat", width: 3, height: 1) {
+            state "default", label:'${currentValue}', defaultState: true
+        }
+
+        valueTile("ip", "device.ipAddr", inactiveLabel: false, decoration: "flat", width: 3, height: 1) {
+            state "default", label:'IP: ${currentValue}', defaultState: true
+        }
     }  
 
     main(["switch"])
-    details(["switch","refresh","monday","tuesday","wednesday","thursday","friday","saturday","sunday","save"])
+    details(["switch","refresh","monday","tuesday","wednesday","thursday","friday","saturday","sunday","save","wifi","ip"])
     
     preferences {
-        input name: "ipAddr", type: "text", title: "IP Address", description: "IP Address of the device", required: true,displayDuringSetup: true
-        input name: "port", type: "number", title: "Port", description: "Port of the device",  defaultValue: 80 ,displayDuringSetup: true
+        input name: "macAddr", type: "text", title: "MAC Address", description: "MAC Address of the device", required: true,displayDuringSetup: true
         input name: "username", type: "text", title: "Username", description: "Username to manage the device", required: false, displayDuringSetup: true
-        input name: "password", type: "password", title: "Password", description: "Username to manage the device", required: false, displayDuringSetup: true
+        input name: "password", type: "password", title: "Password", description: "Password to manage the device", required: false, displayDuringSetup: true
         input name: "beginTime", type: "text", title: "Watering Begin Time", description: "Watering Begin time", defaultValue: "19:50", required: true, displayDuringSetup: true
+        input name: "winterMode", type: "bool", title: "Winter Mode", description: "Winter Mode - timers disabled",  required: true
     }
 
 }
@@ -178,17 +136,26 @@ def initialize() {
 
     def jsonstr1 = JsonOutput.toJson([Arm: 1, Mode: 0, Time: "00:00", Window: 0, Days: "1111111", Repeat: 1, Output: 1, Action: 1])
     
-    log.debug "timer1 json: $jsonstr"
+    log.debug "timer1 json: $jsonstr1"
     
     tasmotaHttpCmd("Timer1%20$jsonstr1")
     
     def jsonstr2 = JsonOutput.toJson([Arm: 1, Mode: 0, Time: "12:00", Window: 0, Days: "1111111", Repeat: 1, Output: 1, Action: 0])
     
-    log.debug "timer2 json: $jsonstr"
+    log.debug "timer2 json: $jsonstr2"
     
     tasmotaHttpCmd("Timer2%20$jsonstr2") 
     
-    tasmotaHttpCmd("Timers%20on")
+    log.debug "wintermode: $winterMode"
+
+    if (winterMode) 
+    {
+        tasmotaHttpCmd("Timers%20off")
+    }
+    else
+    {
+        tasmotaHttpCmd("Timers%20on")
+    }
     
     tasmotaHttpCmd("TimeDST%200,2,3,1,2,-360")
     
@@ -207,16 +174,14 @@ def convertPortToHex(port) {
 }
 
 def tasmotaHttpCmd(cmd){
-    def hosthex = convertIPtoHex(ipAddr)
-    def porthex = convertPortToHex(port)
-    
-    device.deviceNetworkId = "$hosthex:$porthex" 
+    device.deviceNetworkId = macAddr.tokenize( ':' ).collect{it.toUpperCase()}.join()
+    def deviceIP = device.currentValue("ipAddr")
     
     def hubAction = new physicalgraph.device.HubAction(
         method: "GET",
         path: "/cm?user=${username}&password=${password}&cmnd=${cmd}",
         headers: [
-            HOST: "${ipAddr}:${port}"
+            HOST: "$deviceIP:80"
         ]
     )
     
@@ -224,10 +189,11 @@ def tasmotaHttpCmd(cmd){
 }
 
 def parse(description) {
-    def msg = parseLanMessage(description)
-    def jsonStr = msg?.json
-    log.debug "RECEIVING: $jsonStr"
     log.debug "Description: $description"
+    def msg = parseLanMessage(description)
+    log.debug "Message: $msg"
+    def jsonStr = msg?.json
+
     state.responseReceived = true;
     
     def days = jsonStr?.Timer3?.Days
@@ -300,9 +266,6 @@ def parse(description) {
         }
 
     }
-    else {
-        log.error "Unknown message: $msg"
-    }
 
     def timestr = jsonStr?.Time
     
@@ -310,6 +273,31 @@ def parse(description) {
     {
         sendEvent(name:"deviceTime", value: "$timestr", displayed: false)
     }
+    
+    def wifiSsid = jsonStr?.Wifi?.SSId
+    def wifiRssi = jsonStr?.Wifi?.RSSI
+    
+    if (wifiSsid && wifiRssi)
+    {
+        sendEvent(name:"deviceWIFI", value: "WIFI: $wifiSsid   RSSI: $wifiRssi", displayed: false)
+    }
+    
+    def ipStr = msg?.ip
+    
+    if (ipStr)
+    {
+        def ip = "";
+        for (int i=0; i<8; i+=2)
+        {
+            if (ip != "")
+                ip += "."
+            ip += Integer.parseInt(ipStr.substring(i, i+2), 16).toString()
+        }
+
+        log.debug "Device IP: $ip"
+        sendEvent(name:"ipAddr", value: "$ip", displayed: false)
+    }
+    
 }
 
 def on() {
@@ -350,75 +338,6 @@ def checkTimer() {
     log.debug "CHECK_TIMER"
     tasmotaHttpCmd("Timer3")
 }
-
-
-/*
-def sunoff() {
-    log.debug "sunoff"
-    sendEvent(name: "sun", value: "0")
-}
-
-def sunon() {
-    log.debug "sunon"
-    sendEvent(name: "sun", value: "1")
-}
-
-def monoff() {
-    log.debug "monoff"
-    sendEvent(name: "mon", value: "0")
-}
-
-def monon() {
-    log.debug "monon"
-    sendEvent(name: "mon", value: "1")
-}
-
-def tueoff() {
-    log.debug "tueoff"
-    sendEvent(name: "tue", value: "0")
-}
-
-def tueon() {
-    log.debug "tueon"
-    sendEvent(name: "tue", value: "1")
-}
-
-def wedoff() {
-    log.debug "wedoff"
-    sendEvent(name: "wed", value: "0")
-}
-
-def wedon() {
-    log.debug "wedon"
-    sendEvent(name: "wed", value: "1")
-}
-def thuoff() {
-    log.debug "thuoff"
-    sendEvent(name: "thu", value: "0")
-}
-
-def thuon() {
-    log.debug "thuon"
-    sendEvent(name: "thu", value: "1")
-}
-def frioff() {
-    log.debug "frioff"
-    sendEvent(name: "fri", value: "0")
-}
-
-def frion() {
-    log.debug "frion"
-    sendEvent(name: "fri", value: "1")
-}
-def satoff() {
-    log.debug "satoff"
-    sendEvent(name: "sat", value: "0")
-}
-
-def saton() {
-    log.debug "saton"
-    sendEvent(name: "sat", value: "1")
-}*/
 
 def saveTimer() {
     log.debug "saveTimer"
