@@ -15,6 +15,10 @@ metadata {
                 attributeState "off", label:'${name}', action:"momentary.push", backgroundColor:"#ffffff", icon: "st.switches.switch.off"
                 attributeState "offline", label:'${name}', backgroundColor:"#e86d13", icon: "st.switches.switch.off"
             }
+            
+            tileAttribute ("device.deviceTime", key: "SECONDARY_CONTROL") {
+                attributeState "default", label:'Current Time: ${currentValue}'
+            }
         }
         
         standardTile("refresh", "device.switch", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {
@@ -28,14 +32,21 @@ metadata {
         standardTile("Off", "device.switch", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {
             state "default", label:"Turn Off", action:"switch.off", icon:"st.switches.switch.off"
         }
+
+        valueTile("wifi", "device.deviceWIFI", inactiveLabel: false, decoration: "flat", width: 3, height: 1) {
+            state "default", label:'${currentValue}', defaultState: true
+        }
+
+        valueTile("ip", "device.ipAddr", inactiveLabel: false, decoration: "flat", width: 3, height: 1) {
+            state "default", label:'IP: ${currentValue}', defaultState: true
+        }
     }  
 
     main(["switch"])
-    details(["switch","refresh","On","Off"])
+    details(["switch","refresh","On","Off","wifi","ip"])
     
     preferences {
-        input name: "ipAddr", type: "text", title: "IP Address", description: "IP Address of the device", required: true,displayDuringSetup: true
-        input name: "port", type: "number", title: "Port", description: "Port of the device",  defaultValue: 80 ,displayDuringSetup: true
+        input name: "macAddr", type: "text", title: "MAC Address", description: "MAC Address of the device", required: true,displayDuringSetup: true
         input name: "username", type: "text", title: "Username", description: "Username to manage the device", required: false, displayDuringSetup: true
         input name: "password", type: "password", title: "Password", description: "Username to manage the device", required: false, displayDuringSetup: true
     }
@@ -53,6 +64,12 @@ def updated() {
 
 def initialize() {
     state.responseReceived = true;
+
+    tasmotaHttpCmd("TimeDST%200,2,3,1,2,-360")
+    
+    tasmotaHttpCmd("TimeSTD%200,1,11,1,2,-420")
+    
+    tasmotaHttpCmd("Timezone%2099")
 }
 
 def convertIPtoHex(ipAddress) { 
@@ -64,16 +81,14 @@ def convertPortToHex(port) {
 }
 
 def tasmotaHttpCmd(cmd){
-    def hosthex = convertIPtoHex(ipAddr)
-    def porthex = convertPortToHex(port)
-    
-    device.deviceNetworkId = "$hosthex:$porthex" 
+    device.deviceNetworkId = macAddr.tokenize( ':' ).collect{it.toUpperCase()}.join()
+    def deviceIP = device.currentValue("ipAddr")
     
     def hubAction = new physicalgraph.device.HubAction(
         method: "GET",
         path: "/cm?user=${username}&password=${password}&cmnd=${cmd}",
         headers: [
-            HOST: "${ipAddr}:${port}"
+            HOST: "$deviceIP:80"
         ]
     )
     
@@ -82,9 +97,9 @@ def tasmotaHttpCmd(cmd){
 
 def parse(description) {
     def msg = parseLanMessage(description)
+    log.debug "Msg: $msg"
     def jsonStr = msg?.json
-    log.debug "RECEIVING: $jsonStr"
-    log.debug "Description: $description"
+    
     state.responseReceived = true;
     
     if ((jsonStr?.POWER in ["ON", 1, "1"]) || (jsonStr?.Status?.Power in [1, "1"])) {
@@ -95,8 +110,36 @@ def parse(description) {
         sendEvent(name: "deviceStatus", value: "off")
         createEvent(name: "switch", value: "off")
     }
-    else {
-        log.error "Unknown message: $msg"
+
+    def timestr = jsonStr?.Time
+    
+    if (timestr)
+    {
+        sendEvent(name:"deviceTime", value: "$timestr", displayed: false)
+    }
+    
+    def wifiSsid = jsonStr?.Wifi?.SSId
+    def wifiRssi = jsonStr?.Wifi?.RSSI
+    
+    if (wifiSsid && wifiRssi)
+    {
+        sendEvent(name:"deviceWIFI", value: "WIFI: $wifiSsid   RSSI: $wifiRssi", displayed: false)
+    }
+    
+    def ipStr = msg?.ip
+    
+    if (ipStr)
+    {
+        def ip = "";
+        for (int i=0; i<8; i+=2)
+        {
+            if (ip != "")
+                ip += "."
+            ip += Integer.parseInt(ipStr.substring(i, i+2), 16).toString()
+        }
+
+        log.debug "Device IP: $ip"
+        sendEvent(name:"ipAddr", value: "$ip", displayed: false)
     }
 
 }
@@ -113,7 +156,7 @@ def off() {
 
 def refresh() {
     log.debug "REFRESH"
-    tasmotaHttpCmd("Power")
+    tasmotaHttpCmd("State")
 }
 
 def push() {
@@ -131,5 +174,5 @@ def checkDevice() {
     }
     
     state.responseReceived = false
-    tasmotaHttpCmd("Power")
+    tasmotaHttpCmd("State")
 }

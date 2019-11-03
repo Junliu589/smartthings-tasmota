@@ -189,7 +189,6 @@ def tasmotaHttpCmd(cmd){
 }
 
 def parse(description) {
-    log.debug "Description: $description"
     def msg = parseLanMessage(description)
     log.debug "Message: $msg"
     def jsonStr = msg?.json
