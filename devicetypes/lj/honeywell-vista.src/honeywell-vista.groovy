@@ -1,6 +1,7 @@
 metadata {
     definition (name: "Honeywell VISTA", namespace: "LJ", author: "LJ", vid:"honeywell-vista-security-partition") {
         capability "Actuator"
+        capability "Switch"
         capability "Sensor"
         capability "Button"
         capability "Contact Sensor"
@@ -75,7 +76,8 @@ def initialize() {
     
     if (device.currentValue("ipAddr"))
     {
-        configEvl()
+        //Schedule it, instead of run it immediately, because deviceNetworkId can't be set in this function.
+        runIn(30, configEvl)
     }
     else
     {
@@ -86,7 +88,10 @@ def initialize() {
 }
 
 def configEvl(){
-    device.deviceNetworkId = macAddr.tokenize( ':' ).collect{it.toUpperCase()}.join()
+    if (macAddr)
+    {
+        device.deviceNetworkId = macAddr.tokenize( ':' ).collect{it.toUpperCase()}.join()
+    }
 
     def hub = location.hubs[0]
     def deviceIP = device.currentValue("ipAddr")
@@ -103,8 +108,11 @@ def configEvl(){
 }
 
 def discover() {
-    device.deviceNetworkId = macAddr.tokenize( ':' ).collect{it.toUpperCase()}.join()
-
+    if (macAddr)
+    {
+        device.deviceNetworkId = macAddr.tokenize( ':' ).collect{it.toUpperCase()}.join()
+    }
+    
     for (int i=2; i<100; i++) {
     
     log.debug "Sent to 192.168.0.${i}"
@@ -276,7 +284,7 @@ def checkDevice() {
     if (!state.responseReceived)
     {
         //No response recevied from the last check command - it's offline
-        state.offlineMinutes++
+        state.offlineMinutes = state.offlineMinutes + 1
         sendEvent(name: "deviceStatus", value: "offline")
         
         //Try to config the ENVL 

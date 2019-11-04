@@ -67,7 +67,8 @@ def initialize() {
 
     if (device.currentValue("ipAddr"))
     {
-        configDevice()
+        //Schedule it, instead of run it immediately, because deviceNetworkId can't be set in this function.
+        runIn(30,configDevice)
     }
     else
     {
@@ -78,6 +79,11 @@ def initialize() {
 }
 
 def configDevice() {
+    if (macAddr)
+    {
+        device.deviceNetworkId = macAddr.tokenize( ':' ).collect{it.toUpperCase()}.join()
+    }
+
     tasmotaHttpCmd("TimeDST%200,2,3,1,2,-360")
     
     tasmotaHttpCmd("TimeSTD%200,1,11,1,2,-420")
@@ -90,7 +96,10 @@ def configDevice() {
 }
 
 def discover() {
-    device.deviceNetworkId = macAddr.tokenize( ':' ).collect{it.toUpperCase()}.join()
+    if (macAddr)
+    {
+        device.deviceNetworkId = macAddr?.tokenize( ':' ).collect{it.toUpperCase()}.join()
+    }
 
     for (int i=2; i<100; i++) {
     
@@ -208,7 +217,7 @@ def checkDevice() {
     if (!state.responseReceived)
     {
         //No response recevied from the last check command - it's offline
-        state.offlineMinutes++
+        state.offlineMinutes = state.offlineMinutes + 1
         
         //When no response >=2 mins, set the status to Offline
         if (state.offlineMinutes >= 2)
@@ -229,6 +238,5 @@ def checkDevice() {
     }
     
     state.responseReceived = false
-    device.deviceNetworkId = macAddr.tokenize( ':' ).collect{it.toUpperCase()}.join()
     tasmotaHttpCmd("State")
 }
