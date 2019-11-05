@@ -147,7 +147,6 @@ def httpCmd(cmd){
 }
 
 def parse(description) {
-    state.responseReceived = true;
     def msg = parseLanMessage(description)
     log.debug "msg: $msg"
 
@@ -159,6 +158,7 @@ def parse(description) {
         def pannelMsg = body.substring(startIndex+1, endIndex)
         log.debug "$pannelMsg"
         
+        state.responseReceived = true;
         //The ENVL message should be like: "00,01,0008,05,04,FAULT 05"
         def fields = pannelMsg.split(',')
         
@@ -191,6 +191,7 @@ def parse(description) {
             {
                 sendEvent(name: "partitionStatus", value: "ready")
                 sendEvent(name: "contact", value: "open")
+                state.notreadyCount = 0
             }
             else if (bitfield & BIT_ARMEDINSTANT)
             {
@@ -212,7 +213,12 @@ def parse(description) {
             }
             else
             {
-                sendEvent(name: "partitionStatus", value: "notready")
+                //NotReady - increase the count
+                state.notreadyCount = state.notreadyCount + 1
+                if (state.notreadyCount > 3) 
+                {
+                    sendEvent(name: "partitionStatus", value: "notready")
+                }
             }
             
             if (bitfield & BIT_CHIME)
@@ -293,7 +299,7 @@ def checkDevice() {
     {
         //No response recevied from the last check command - it's offline
         state.offlineMinutes = state.offlineMinutes + 1
-        sendEvent(name: "deviceStatus", value: "offline")
+        sendEvent(name: "partitionStatus", value: "offline")
         
         //Try to config the ENVL 
         configEvl()
