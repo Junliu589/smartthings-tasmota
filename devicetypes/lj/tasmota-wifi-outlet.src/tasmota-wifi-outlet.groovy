@@ -151,11 +151,11 @@ def parse(description) {
     
     if ((jsonStr?.POWER in ["ON", 1, "1"]) || (jsonStr?.Status?.Power in [1, "1"])) {
         sendEvent(name: "deviceStatus", value: "on")
-        createEvent(name: "switch", value: "on")
+        sendEvent(name: "switch", value: "on")
     }
     else if ((jsonStr?.POWER in ["OFF", 0, "0"]) || (jsonStr?.Status?.Power in [0, "0"])) {
         sendEvent(name: "deviceStatus", value: "off")
-        createEvent(name: "switch", value: "off")
+        sendEvent(name: "switch", value: "off")
     }
 
     def timestr = jsonStr?.Time

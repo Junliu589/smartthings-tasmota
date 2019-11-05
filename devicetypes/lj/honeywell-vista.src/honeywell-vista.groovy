@@ -1,7 +1,6 @@
 metadata {
     definition (name: "Honeywell VISTA", namespace: "LJ", author: "LJ", vid:"honeywell-vista-security-partition") {
         capability "Actuator"
-        capability "Switch"
         capability "Sensor"
         capability "Button"
         capability "Contact Sensor"
@@ -64,6 +63,7 @@ metadata {
 
 def installed() {
     initialize()
+    createChildWifiOutlet()
 }
 
 def updated() {
@@ -230,9 +230,16 @@ def parse(description) {
             }
         
         }
-        
+    } else {
+        //Pass the other messages to the child outlet
+        def children = getChildDevices()
 
-    }
+        log.debug "device has ${children.size()} children"
+        children.each { child ->
+            log.debug "child ${child.displayName} has deviceNetworkId ${child.deviceNetworkId}"
+            child.parse(description)
+        }
+    }    
     
     //Get the device IP
     def ipStr = msg?.ip
@@ -250,6 +257,7 @@ def parse(description) {
         log.debug "Device IP: $ip"
         sendEvent(name:"ipAddr", value: "$ip", displayed: false)
     }
+    
 
 }
 
@@ -303,4 +311,9 @@ def checkDevice() {
     }
     
     state.responseReceived = false
+}
+
+private void createChildWifiOutlet() {
+    addChildDevice("LJ", "Tasmota Wifi Outlet", "Honeywell DNI", null, 
+                                  [completedSetup: true, label: "Wifi Outlet"])
 }
