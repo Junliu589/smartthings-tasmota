@@ -220,6 +220,7 @@ def parse(description) {
                 {
                     sendEvent(name: "partitionStatus", value: "notready")
                 }
+                sendEvent(name: "contact", value: "open")
             }
             
             if (bitfield & BIT_CHIME)
