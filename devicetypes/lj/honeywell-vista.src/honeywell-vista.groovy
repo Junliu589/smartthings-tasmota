@@ -73,6 +73,7 @@ def updated() {
 def initialize() {
     state.responseReceived = true
     state.offlineMinutes = 0
+    state.notreadyCount = 0
     
     if (device.currentValue("ipAddr"))
     {
