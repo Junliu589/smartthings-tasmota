@@ -291,13 +291,21 @@ def parseVistaPannelMsg(msg) {
         } else if (fields[0] == "01") {
             //Zone Status Command - only parse the first 8 bytes (64 zones)
             def statusBits = Long.reverseBytes(Long.parseLong(fields[1].substring(0,16), 16))
-            def zoneStatus = []
+            def statusMap = [
+                '0' : "closed",
+                '1' : "open",
+                '2' : "closed",
+                '3' : "alarm"
+            ]
+            
             for (int i=1;i<=64;i++) {
-                zoneStatus.add(statusBits & 0x1)
+                 def zonedevice = getChildDevice("Honeywell-Zone-${i}")
+                 if (zonedevice) {
+                     zonedevice.zone(statusMap."${statusBits & 0x1 + ((device.currentValue("partitionStatus") == "alarming") ? 2 : 0)}")
+                 }
+                
                 statusBits = statusBits >> 1
             }
-            
-            
             
         }
     }    
