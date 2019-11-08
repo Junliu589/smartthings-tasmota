@@ -213,7 +213,6 @@ def parseVistaPannelMsg(msg) {
         if (fields[0] == "00" && fields[1] == "01")
         {
             def bitfield = Integer.decode("0x" + fields[2]);
-            log.debug "bitfield: $bitfield"
             
             def BIT_ARMEDSTAY     = 0x8000
             def BIT_LOWBATTERY    = 0x4000
@@ -240,6 +239,7 @@ def parseVistaPannelMsg(msg) {
                 sendEvent(name: "partitionStatus", value: "ready")
                 sendEvent(name: "contact", value: "open")
                 sendEvent(name: "switch", value: "off")
+                closeAllZones()
                 state.notreadyCount = 0
             }
             else if (bitfield & BIT_ARMEDINSTANT)
@@ -412,6 +412,14 @@ private void removeChildZones() {
         if (it.name != "Tasmota Wifi Outlet") {
             log.debug "removing ${it.name}"
             deleteChildDevice(it.deviceNetworkId) 
+        }
+    }
+}
+
+private void closeAllZones() {
+    getChildDevices()?.each { 
+        if (it.deviceNetworkId.matches("Honeywell-Zone-(.*)")) {
+            it.zone("closed")
         }
     }
 }
