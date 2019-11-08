@@ -1,6 +1,5 @@
 metadata {
     definition (name: "Tasmota Wifi Outlet", namespace: "LJ", author: "LJ", vid:"tasmota-wifi-outlet") {
-        capability "Actuator"
         capability "Switch"
         capability "Refresh"
         capability "Momentary"
@@ -17,7 +16,7 @@ metadata {
             }
             
             tileAttribute ("device.deviceTime", key: "SECONDARY_CONTROL") {
-                attributeState "default", label:'Current Time: ${currentValue}'
+                attributeState "default", label:'${currentValue}'
             }
         }
         
@@ -159,10 +158,9 @@ def parse(description) {
     }
 
     def timestr = jsonStr?.Time
-    
-    if (timestr)
-    {
-        sendEvent(name:"deviceTime", value: "$timestr", displayed: false)
+    if (timestr) {
+        def time = Date.parse("yyyy-MM-dd'T'hh:mm:ss", timestr)?.format("EEE MMM-dd-yyyy HH:mm:ss")
+        sendEvent(name:"deviceTime", value: "$time", displayed: false)
     }
     
     def wifiSsid = jsonStr?.Wifi?.SSId

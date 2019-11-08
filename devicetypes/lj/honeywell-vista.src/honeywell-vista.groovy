@@ -1,9 +1,7 @@
 metadata {
     definition (name: "Honeywell VISTA", namespace: "LJ", author: "LJ", vid:"honeywell-vista-security-partition") {
-        capability "Actuator"
-        capability "Sensor"
-        capability "Button"
         capability "Contact Sensor"
+        capability "Switch"
     }
 
     attribute "partitionStatus", "enum", ["offline", "armedaway", "armedstay", "exitdelay", "ready", "notready", "alarmed", "alarming"]
@@ -43,6 +41,14 @@ metadata {
             state "default", label:"Disarm", action:"disarm", icon:"st.security.alarm.off", backgroundColor: "#C0C0C0"
         }
 
+        standardTile("ArmMax", "device.partitionStatus", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {
+            state "default", label:"Max", action:"armMax", icon:"st.security.alarm.on", backgroundColor: "#C0C0C0"
+        }
+        
+        standardTile("ArmInstant", "device.partitionStatus", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {
+            state "default", label:"Instant", action:"armInstant", icon:"st.security.alarm.on", backgroundColor: "#C0C0C0"
+        }
+        
         standardTile("Chime", "device.chimeStatus", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {
             state "on", label:"Chime", action:"chime", icon:"st.security.alarm.off", backgroundColor: "#79b821"
             state "off", label:"Chime", action:"chime", icon:"st.security.alarm.off", backgroundColor: "#C0C0C0"
@@ -50,7 +56,7 @@ metadata {
     }
 
     main(["Status"])
-    details(["Status","ArmAway","ArmStay","Disarm","Chime","wifi","ip"])
+    details(["Status","ArmAway","ArmStay","Disarm","ArmMax","ArmInstant","Chime","wifi","ip"])
     
     preferences {
         input name: "macAddr", type: "text", title: "MAC Address", description: "MAC Address of the device", required: true,displayDuringSetup: true
@@ -58,16 +64,21 @@ metadata {
         input name: "password", type: "password", title: "Password", description: "Username to manage the device", required: false, displayDuringSetup: true
         input name: "enIpAddr", type: "text", title: "ENVL Board IP Address", description: "IP Address of EVL Board", required: true,displayDuringSetup: true
         input name: "vistaPasscode", type: "password", title: "VISTA Passcode", description: "User Passcode of Honeywell Vista Pannel", required: false,displayDuringSetup: true
+        input name: "contactZones", type: "text", title: "Contact Sensor Zones", description: "Comma-separated Door/Windows Contact Sensor Zones, e.g. 1,3,7", required: false,displayDuringSetup: true
+        input name: "motionZones", type: "text", title: "Motion Sensor Zones", description: "Comma-separated Montion Sensor Zones, e.g. 2,4,5,6", required: false,displayDuringSetup: true
     }
 }
 
 def installed() {
     initialize()
     createChildWifiOutlet()
+    createChildZones()
 }
 
 def updated() {
     initialize()
+    removeChildZones()
+    createChildZones()
 }
 
 def initialize() {
@@ -151,6 +162,41 @@ def parse(description) {
     def msg = parseLanMessage(description)
     log.debug "msg: $msg"
 
+    if (msg?.json) {
+        //Tasmota Outlet related message - Pass to the child outlet
+        def children = getChildDevices()
+        children.each { child ->
+            //device.displayName is the same as device.label - the user defined name. 
+            //device.name is the internal name when the device is create.
+            //device.deviceNetworkId could be modified through the MAC config in the UI
+            if (child.name == "Tasmota Wifi Outlet") {
+                child.parse(description)
+            }
+        }
+    } else {
+        //Vista Pannel Messages
+        parseVistaPannelMsg(msg)
+    }
+    
+    //Get the device IP
+    def ipStr = msg?.ip
+    
+    if (ipStr)
+    {
+        def ip = ""
+        for (int i=0; i<8; i+=2)
+        {
+            if (ip != "")
+                ip += "."
+            ip += Integer.parseInt(ipStr.substring(i, i+2), 16).toString()
+        }
+
+        log.debug "Device IP: $ip"
+        sendEvent(name:"ipAddr", value: "$ip", displayed: false)
+    }
+}
+
+def parseVistaPannelMsg(msg) {
     def body = msg?.body
     def startIndex = body.indexOf('%')
     def endIndex = body.indexOf('$')
@@ -163,7 +209,7 @@ def parse(description) {
         //The ENVL message should be like: "00,01,0008,05,04,FAULT 05"
         def fields = pannelMsg.split(',')
         
-        //Only check the command code "00" and Partition "01"
+        //check the command code "00" and Partition "01"
         if (fields[0] == "00" && fields[1] == "01")
         {
             def bitfield = Integer.decode("0x" + fields[2]);
@@ -187,22 +233,26 @@ def parse(description) {
             {
                 sendEvent(name: "partitionStatus", value: "armedstay")
                 sendEvent(name: "contact", value: "closed")
+                sendEvent(name: "switch", value: "on")
             }
             else if (bitfield & BIT_READY)
             {
                 sendEvent(name: "partitionStatus", value: "ready")
                 sendEvent(name: "contact", value: "open")
+                sendEvent(name: "switch", value: "off")
                 state.notreadyCount = 0
             }
             else if (bitfield & BIT_ARMEDINSTANT)
             {
                 sendEvent(name: "partitionStatus", value: "armedstay")
                 sendEvent(name: "contact", value: "closed")
+                sendEvent(name: "switch", value: "on")
             }
             else if (bitfield & BIT_ARMEDAWAY)
             {
                 sendEvent(name: "partitionStatus", value: "armedaway")
                 sendEvent(name: "contact", value: "closed")
+                sendEvent(name: "switch", value: "on")
             }
             else if (bitfield & BIT_ALARMINMEM)
             {
@@ -221,6 +271,7 @@ def parse(description) {
                     sendEvent(name: "partitionStatus", value: "notready")
                 }
                 sendEvent(name: "contact", value: "open")
+                sendEvent(name: "switch", value: "off")
             }
             
             if (bitfield & BIT_CHIME)
@@ -237,38 +288,20 @@ def parse(description) {
                 sendEvent(name: "keypadText", value: "${fields[5]}", displayed: false)
             }
         
-        }
-    } else {
-        //Pass the other messages to the child outlet
-        def children = getChildDevices()
-
-        log.debug "device has ${children.size()} children"
-        children.each { child ->
-            log.debug "child ${child.displayName} has deviceNetworkId ${child.deviceNetworkId}"
-            child.parse(description)
+        } else if (fields[0] == "01") {
+            //Zone Status Command - only parse the first 8 bytes (64 zones)
+            def statusBits = Long.reverseBytes(Long.parseLong(fields[1].substring(0,16), 16))
+            def zoneStatus = []
+            for (int i=1;i<=64;i++) {
+                zoneStatus.add(statusBits & 0x1)
+                statusBits = statusBits >> 1
+            }
+            
+            
+            
         }
     }    
-    
-    //Get the device IP
-    def ipStr = msg?.ip
-    
-    if (ipStr)
-    {
-        def ip = "";
-        for (int i=0; i<8; i+=2)
-        {
-            if (ip != "")
-                ip += "."
-            ip += Integer.parseInt(ipStr.substring(i, i+2), 16).toString()
-        }
-
-        log.debug "Device IP: $ip"
-        sendEvent(name:"ipAddr", value: "$ip", displayed: false)
-    }
-    
-
 }
-
 
 def armAway() {
     log.debug "ARMAWAY"
@@ -280,6 +313,18 @@ def armStay() {
     log.debug "ARMSTAY"
 
     httpCmd("${vistaPasscode}" + "3")
+}
+
+def armMax() {
+    log.debug "ARMMAX"
+
+    httpCmd("${vistaPasscode}" + "4")
+}
+
+def armInstant() {
+    log.debug "ARMINSTANT"
+
+    httpCmd("${vistaPasscode}" + "7")
 }
 
 def disarm() {
@@ -294,6 +339,15 @@ def chime() {
     httpCmd("${vistaPasscode}" + "9")
 }
 
+def on() {
+    armAway()
+}
+
+def off() {
+    disarm()
+}
+    
+    
 def checkDevice() {
     log.debug "CHECK"
 
@@ -323,5 +377,32 @@ def checkDevice() {
 
 private void createChildWifiOutlet() {
     addChildDevice("LJ", "Tasmota Wifi Outlet", "Honeywell DNI", null, 
-                                  [completedSetup: true, label: "Wifi Outlet"])
+                    [completedSetup: true, label: "Wifi Outlet"])
+}
+
+private void createChildZones() {
+    contactZones?.split(',')?.each { zoneNum ->
+        if (zoneNum.toInteger()) {
+            log.debug "Create Contact Zone ${zoneNum}"
+            addChildDevice("redloro-smartthings", "Honeywell Zone Contact", "Honeywell-Zone-${zoneNum}", null, 
+                           [completedSetup: true, label: "Zone ${zoneNum}"])
+        }
+    }
+
+    motionZones?.split(',')?.each { zoneNum ->
+        if (zoneNum.toInteger()) {
+            log.debug "Create Motion Zone ${zoneNum}"
+            addChildDevice("redloro-smartthings", "Honeywell Zone Motion", "Honeywell-Zone-${zoneNum}", null, 
+                           [completedSetup: true, label: "Zone ${zoneNum}"])
+        }
+    }
+}
+
+private void removeChildZones() {
+    getChildDevices().each { 
+        if (it.name != "Tasmota Wifi Outlet") {
+            log.debug "removing ${it.name}"
+            deleteChildDevice(it.deviceNetworkId) 
+        }
+    }
 }
