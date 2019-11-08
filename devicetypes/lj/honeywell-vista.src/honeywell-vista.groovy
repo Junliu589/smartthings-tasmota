@@ -298,6 +298,16 @@ def parseVistaPannelMsg(msg) {
                 '3' : "alarm"
             ]
             
+            getChildDevices()?.each { 
+                if (it.deviceNetworkId.matches("Honeywell-Zone-(.*)")) {
+                    log.debug "Updating Zone: ${it.deviceNetworkId}"
+                    def zoneNum = it.deviceNetworkId.substring(15).toInteger()
+                    if (zoneNum) {
+                        it.zone(statusMap."${((statusBits >> (zoneNum - 1)) & 0x1) + ((device.currentValue("partitionStatus") == "alarming") ? 2 : 0)}")
+                    }
+                }
+            }
+            
             for (int i=1;i<=64;i++) {
                  def zonedevice = getChildDevice("Honeywell-Zone-${i}")
                  if (zonedevice) {
@@ -407,7 +417,7 @@ private void createChildZones() {
 }
 
 private void removeChildZones() {
-    getChildDevices().each { 
+    getChildDevices()?.each { 
         if (it.name != "Tasmota Wifi Outlet") {
             log.debug "removing ${it.name}"
             deleteChildDevice(it.deviceNetworkId) 
