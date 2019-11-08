@@ -308,15 +308,6 @@ def parseVistaPannelMsg(msg) {
                 }
             }
             
-            for (int i=1;i<=64;i++) {
-                 def zonedevice = getChildDevice("Honeywell-Zone-${i}")
-                 if (zonedevice) {
-                     zonedevice.zone(statusMap."${statusBits & 0x1 + ((device.currentValue("partitionStatus") == "alarming") ? 2 : 0)}")
-                 }
-                
-                statusBits = statusBits >> 1
-            }
-            
         }
     }    
 }
