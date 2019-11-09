@@ -307,8 +307,8 @@ def parseVistaPannelMsg(msg) {
                     //Update the Zone status
                     currentZone = zoneNum.toInteger()
                     getChildDevices()?.each { 
-                        if (it.deviceNetworkId == "Honeywell-Zone-${i}") {
-                            log.debug "Set Zone ${i} in Open state"
+                        if (it.deviceNetworkId == "Honeywell-Zone-${currentZone}") {
+                            log.debug "Set Zone ${currentZone} in Open state"
                             it.zone("open")
                             it.label = fields[5].replaceAll("(.*)FAULT", "Zone")
                         }
