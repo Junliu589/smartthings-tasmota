@@ -85,6 +85,7 @@ def initialize() {
     state.responseReceived = true
     state.offlineMinutes = 0
     state.notreadyCount = 0
+    state.activeZoneList = []
     
     if (device.currentValue("ipAddr"))
     {
@@ -288,19 +289,23 @@ def parseVistaPannelMsg(msg) {
             if (fields[5])
             {
                 sendEvent(name: "keypadText", value: "${fields[5]}", displayed: false)
-                
+
+                Integer currentZone = 0
+
                 //Now parse the "CHECK/FAULT zone" text info
                 if (fields[5].matches("CHECK ${zoneNum}(.*)")) {
-                    Integer i = zoneNum.toInteger()
+                    //Update the Zone status
+                    currentZone = zoneNum.toInteger()
                     getChildDevices()?.each { 
-                        if (it.deviceNetworkId == "Honeywell-Zone-${i}") {
-                            log.debug "Set Zone ${i} in CHECK state"
+                        if (it.deviceNetworkId == "Honeywell-Zone-${currentZone}") {
+                            log.debug "Set Zone ${currentZone} in CHECK state"
                             it.zone("check")
                             it.label = fields[5].replaceAll("CHECK", "Zone")
                         }
                     }
                 } else if (fields[5].matches("FAULT ${zoneNum}(.*)")) {
-                    Integer i = zoneNum.toInteger()
+                    //Update the Zone status
+                    currentZone = zoneNum.toInteger()
                     getChildDevices()?.each { 
                         if (it.deviceNetworkId == "Honeywell-Zone-${i}") {
                             log.debug "Set Zone ${i} in Open state"
@@ -309,7 +314,38 @@ def parseVistaPannelMsg(msg) {
                         }
                     }
                 }
-                
+
+                if (currentZone) {
+                    //Check whether the keypad zone info update is displayed from the beginning (the smallest zone)
+                    if (!state.activeZoneList.isEmpty()) {
+                        def lastZone = state.activeZoneList.pop()
+                        state.activeZoneList.add(lastZone)                        
+                        if (currentZone < lastZone) {
+                            //The zone info is displayed from the beginning. 
+                            //All the other zones which are not in this list should be set to closed.
+
+                            getChildDevices()?.each { 
+                                if (it.deviceNetworkId.matches("Honeywell-Zone-(.*)")) {
+                                    def z = it.deviceNetworkId.substring(15).toInteger()
+                                    if (z && (!state.activeZoneList.contains(z))) {
+                                        log.debug("Set Zone ${z} Closed")
+                                        it.zone("closed")
+                                    }
+                                }
+                            }
+
+                            //Clear the list
+                            while (!state.activeZoneList.isEmpty())
+                            {
+                                state.activeZoneList.pop()
+                            }
+                        }
+                    }
+ 
+                    //Add current zone to the list
+                    state.activeZoneList.add(currentZone)
+                }
+
             }
         
         } else if (fields[0] == "01") {
