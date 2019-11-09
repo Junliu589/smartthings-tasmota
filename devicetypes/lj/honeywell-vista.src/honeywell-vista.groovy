@@ -283,9 +283,33 @@ def parseVistaPannelMsg(msg) {
                 sendEvent(name: "chimeStatus", value: "off")
             }
             
+            def zoneNum = fields[3]
+            
             if (fields[5])
             {
                 sendEvent(name: "keypadText", value: "${fields[5]}", displayed: false)
+                
+                //Now parse the "CHECK/FAULT zone" text info
+                if (fields[5].matches("CHECK ${zoneNum}(.*)")) {
+                    Integer i = zoneNum.toInteger()
+                    getChildDevices()?.each { 
+                        if (it.deviceNetworkId == "Honeywell-Zone-${i}") {
+                            log.debug "Set Zone ${i} in CHECK state"
+                            it.zone("check")
+                            it.label = fields[5].replaceAll("CHECK", "Zone")
+                        }
+                    }
+                } else if (fields[5].matches("FAULT ${zoneNum}(.*)")) {
+                    Integer i = zoneNum.toInteger()
+                    getChildDevices()?.each { 
+                        if (it.deviceNetworkId == "Honeywell-Zone-${i}") {
+                            log.debug "Set Zone ${i} in Open state"
+                            it.zone("open")
+                            it.label = fields[5].replaceAll("FAULT", "Zone")
+                        }
+                    }
+                }
+                
             }
         
         } else if (fields[0] == "01") {

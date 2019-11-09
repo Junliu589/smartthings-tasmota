@@ -25,6 +25,7 @@ metadata {
       tileAttribute ("device.motion", key: "PRIMARY_CONTROL") {
         attributeState "inactive", label:'no motion', icon:"st.motion.motion.inactive", backgroundColor:"#ffffff"
         attributeState "active", label:'motion', icon:"st.motion.motion.active", backgroundColor:"#53a7c0"
+        attributeState "check", label:'CHECK', icon:"st.motion.motion.active", backgroundColor:"#ff0000"
         attributeState "alarm", label:'ALARM', icon:"st.motion.motion.active", backgroundColor:"#ff0000"
       }
     }
@@ -40,6 +41,7 @@ def zone(String state) {
   def eventMap = [
     'closed':"inactive",
     'open':"active",
+    'check':"check",
     'alarm':"alarm"
   ]
   def newState = eventMap."${state}"
@@ -47,6 +49,7 @@ def zone(String state) {
   def descMap = [
     'closed':"Motion Has Stopped",
     'open':"Detected Motion",
+    'check':"Zone in Trouble",
     'alarm':"Alarm Triggered"
   ]
   def desc = descMap."${state}"

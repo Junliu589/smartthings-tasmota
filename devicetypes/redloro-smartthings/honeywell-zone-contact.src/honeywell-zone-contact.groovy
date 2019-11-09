@@ -25,6 +25,7 @@ metadata {
       tileAttribute ("device.contact", key: "PRIMARY_CONTROL") {
         attributeState "closed", label:'${name}', icon:"st.contact.contact.closed", backgroundColor:"#79b821"
         attributeState "open", label:'${name}', icon:"st.contact.contact.open", backgroundColor:"#ffa81e"
+        attributeState "check", label:'${name}', icon:"st.contact.contact.open", backgroundColor:"#ff0000"
         attributeState "alarm", label:'${name}', icon:"st.contact.contact.open", backgroundColor:"#ff0000"
       }
     }
@@ -39,6 +40,7 @@ def zone(String state) {
   def descMap = [
     'closed':"Was Closed",
     'open':"Was Opened",
+    'check':"Zone in Trouble",
     'alarm':"Alarm Triggered"
   ]
   def desc = descMap."${state}"
