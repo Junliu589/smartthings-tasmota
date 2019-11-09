@@ -293,24 +293,24 @@ def parseVistaPannelMsg(msg) {
                 Integer currentZone = 0
 
                 //Now parse the "CHECK/FAULT zone" text info
-                if (fields[5].matches("CHECK ${zoneNum}(.*)")) {
+                if (fields[5].matches("(.*)CHECK ${zoneNum}(.*)")) {
                     //Update the Zone status
                     currentZone = zoneNum.toInteger()
                     getChildDevices()?.each { 
                         if (it.deviceNetworkId == "Honeywell-Zone-${currentZone}") {
                             log.debug "Set Zone ${currentZone} in CHECK state"
                             it.zone("check")
-                            it.label = fields[5].replaceAll("CHECK", "Zone")
+                            it.label = fields[5].replaceAll("(.*)CHECK", "Zone")
                         }
                     }
-                } else if (fields[5].matches("FAULT ${zoneNum}(.*)")) {
+                } else if (fields[5].matches("(.*)FAULT ${zoneNum}(.*)")) {
                     //Update the Zone status
                     currentZone = zoneNum.toInteger()
                     getChildDevices()?.each { 
                         if (it.deviceNetworkId == "Honeywell-Zone-${i}") {
                             log.debug "Set Zone ${i} in Open state"
                             it.zone("open")
-                            it.label = fields[5].replaceAll("FAULT", "Zone")
+                            it.label = fields[5].replaceAll("(.*)FAULT", "Zone")
                         }
                     }
                 }
