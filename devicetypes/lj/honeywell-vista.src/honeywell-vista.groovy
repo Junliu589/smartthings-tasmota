@@ -303,7 +303,8 @@ private void parseAlphaField(zoneNum, alphaField) {
         }
     }
 
-    if (currentZone) {
+    //Below code is not reliable.
+    /*if (currentZone) {
         //Check whether the keypad zone info update is displayed from the begining (the smallest zone)
         def activeZones = state.activeZoneList
         def size = activeZones.size()
@@ -331,7 +332,7 @@ private void parseAlphaField(zoneNum, alphaField) {
 
         //Add current zone to the list
         state.activeZoneList.add(currentZone)
-    }
+    }*/
 }
 
 private void parseZoneStatusCommand(zoneStatusField) {
