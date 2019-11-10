@@ -349,8 +349,8 @@ private void parseZoneStatusCommand(zoneStatusField) {
             def zoneNum = it.deviceNetworkId.substring(15).toInteger()
             if (zoneNum) {
                 def statusVal = ((statusBits >> (zoneNum - 1)) & 0x1) + ((device.currentValue("partitionStatus") == "alarming") ? 2 : 0)
-                it.zone(statusMap.$statusVal)
-                log.debug "Updating Zone: ${zoneNum} to ${statusMap.$statusVal}"
+                it.zone(statusMap."${statusVal}")
+                log.debug "Updating Zone: ${zoneNum} to ${statusVal}"
             }
         }
     }
