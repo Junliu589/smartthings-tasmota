@@ -77,7 +77,6 @@ def installed() {
 
 def updated() {
     initialize()
-    removeChildZones()
     createChildZones()
 }
 
@@ -401,28 +400,43 @@ private void createChildWifiOutlet() {
 private void createChildZones() {
     contactZones?.split(',')?.each { zoneNum ->
         if (zoneNum.toInteger()) {
-            log.debug "Create Contact Zone ${zoneNum}"
-            addChildDevice("redloro-smartthings", "Honeywell Zone Contact", "Honeywell-Zone-${zoneNum}", null, 
-                           [completedSetup: true, label: "Zone ${zoneNum}"])
+            createChildZone("Honeywell Zone Contact", zoneNum)
         }
     }
 
     motionZones?.split(',')?.each { zoneNum ->
         if (zoneNum.toInteger()) {
-            log.debug "Create Motion Zone ${zoneNum}"
-            addChildDevice("redloro-smartthings", "Honeywell Zone Motion", "Honeywell-Zone-${zoneNum}", null, 
-                           [completedSetup: true, label: "Zone ${zoneNum}"])
+            createChildZone("Honeywell Zone Motion", zoneNum)
         }
     }
 }
 
-private void removeChildZones() {
-    getChildDevices()?.each { 
-        if (it.name != "Tasmota Wifi Outlet") {
-            log.debug "removing ${it.name}"
-            deleteChildDevice(it.deviceNetworkId) 
+private void createChildZone(type, zoneNum) {
+    def childDevice = getChild("Honeywell-Zone-${zoneNum}")
+    if (childDevice?.name == type) {
+        //do nothing
+        log.debug "Child Zone ${zoneNum} already exists"
+    } else if (childDevice) {
+        //Need to remove this child device first
+        log.debug "Remove the old one and create a new ${zoneNum}"
+        deleteChildDevice(childDevice.deviceNetworkId)
+        addChildDevice("redloro-smartthings", type, "Honeywell-Zone-${zoneNum}", null, 
+                       [completedSetup: true, label: "Zone ${zoneNum}"])
+    } else {
+        log.debug "Create Zone ${zoneNum}"
+        addChildDevice("redloro-smartthings", type, "Honeywell-Zone-${zoneNum}", null, 
+                       [completedSetup: true, label: "Zone ${zoneNum}"])            
+    }
+}
+
+private getChild(deviceNetId) {
+    def child = null
+    getChildDevices()?.each {
+        if (it.deviceNetworkId == deviceNetId) {
+           child = it
         }
     }
+    return child
 }
 
 private void closeAllZones() {
