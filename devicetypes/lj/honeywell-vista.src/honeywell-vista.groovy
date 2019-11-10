@@ -85,7 +85,6 @@ def initialize() {
     state.responseReceived = true
     state.offlineMinutes = 0
     state.notreadyCount = 0
-    state.activeZoneList = []
     
     if (device.currentValue("ipAddr")) {
         //Schedule it, instead of run it immediately, because deviceNetworkId can't be set in this function.
@@ -302,37 +301,6 @@ private void parseAlphaField(zoneNum, alphaField) {
             }
         }
     }
-
-    //Below code is not reliable.
-    /*if (currentZone) {
-        //Check whether the keypad zone info update is displayed from the begining (the smallest zone)
-        def activeZones = state.activeZoneList
-        def size = activeZones.size()
-        if (size) {
-            def lastZone = activeZones.get(size-1)
-            if ((lastZone) && (currentZone <= lastZone)) {
-                //The zone info is displayed from the begining. 
-                //All the other zones which are not in this list should be set to closed.
-                getChildDevices()?.each { 
-                    if (it.deviceNetworkId.matches("Honeywell-Zone-(.*)")) {
-                        def z = it.deviceNetworkId.substring(15).toInteger()
-                        if (z && (!activeZones.contains(z))) {
-                            log.debug("Set Zone ${z} Closed")
-                            it.zone("closed")
-                        }
-                    }
-                }
-
-                //Clear the list
-                while (!activeZones.isEmpty()) {
-                    activeZones.pop()
-                }
-            }
-        }
-
-        //Add current zone to the list
-        state.activeZoneList.add(currentZone)
-    }*/
 }
 
 private void parseZoneStatusCommand(zoneStatusField) {
@@ -354,12 +322,6 @@ private void parseZoneStatusCommand(zoneStatusField) {
                 log.debug "Updating Zone: ${zoneNum} to ${statusVal}"
             }
         }
-    }
-    
-    //Clear the active zone list
-    def activeZones = state.activeZoneList
-    while (!activeZones.isEmpty()) {
-       activeZones.pop()
     }
 }
 
@@ -468,11 +430,5 @@ private void closeAllZones() {
         if (it.deviceNetworkId.matches("Honeywell-Zone-(.*)")) {
             it.zone("closed")
         }
-    }
-    
-    //Clear the active zone list
-    def activeZones = state.activeZoneList
-    while (!activeZones.isEmpty()) {
-       activeZones.pop()
     }
 }
