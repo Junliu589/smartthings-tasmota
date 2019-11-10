@@ -87,13 +87,10 @@ def initialize() {
     state.notreadyCount = 0
     state.activeZoneList = []
     
-    if (device.currentValue("ipAddr"))
-    {
+    if (device.currentValue("ipAddr")) {
         //Schedule it, instead of run it immediately, because deviceNetworkId can't be set in this function.
         runIn(30, configEvl)
-    }
-    else
-    {
+    } else {
         runIn(30, discover)
     }
     
@@ -101,8 +98,7 @@ def initialize() {
 }
 
 def configEvl(){
-    if (macAddr)
-    {
+    if (macAddr) {
         device.deviceNetworkId = macAddr.tokenize( ':' ).collect{it.toUpperCase()}.join()
     }
 
@@ -121,24 +117,23 @@ def configEvl(){
 }
 
 def discover() {
-    if (macAddr)
-    {
+    if (macAddr) {
         device.deviceNetworkId = macAddr.tokenize( ':' ).collect{it.toUpperCase()}.join()
     }
     
     for (int i=2; i<100; i++) {
     
-    log.debug "Sent to 192.168.0.${i}"
+        log.debug "Sent to 192.168.0.${i}"
     
-    def hubAction = new physicalgraph.device.HubAction(
-        method: "GET",
-        path: "/cm?user=${username}&password=${password}&cmnd=State",
-        headers: [
-            HOST: "192.168.0.${i}:80"
-        ]
-    )
+        def hubAction = new physicalgraph.device.HubAction(
+            method: "GET",
+            path: "/cm?user=${username}&password=${password}&cmnd=State",
+            headers: [
+                HOST: "192.168.0.${i}:80"
+            ]
+        )
     
-    sendHubCommand(hubAction)
+        sendHubCommand(hubAction)
     }
     
     //Try to config the device after the discovery
@@ -161,7 +156,7 @@ def httpCmd(cmd){
 
 def parse(description) {
     def msg = parseLanMessage(description)
-    log.debug "msg: $msg"
+    //log.debug "msg: $msg"
 
     if (msg?.json) {
         //Tasmota Outlet related message - Pass to the child outlet
@@ -211,165 +206,154 @@ def parseVistaPannelMsg(msg) {
         def fields = pannelMsg.split(',')
         
         //check the command code "00" and Partition "01"
-        if (fields[0] == "00" && fields[1] == "01")
-        {
-            def bitfield = Integer.decode("0x" + fields[2]);
-            
-            def BIT_ARMEDSTAY     = 0x8000
-            def BIT_LOWBATTERY    = 0x4000
-            def BIT_FIRE          = 0x2000
-            def BIT_READY         = 0x1000
-            def BIT_TROUBLE       = 0x0200
-            def BIT_FIREALARM     = 0x0100
-            def BIT_ARMEDINSTANT  = 0x0080
-            def BIT_CHIME         = 0x0020
-            def BIT_BYPASS        = 0x0010
-            def BIT_ACPRESENT     = 0x0008
-            def BIT_ARMEDAWAY     = 0x0004
-            def BIT_ALARMINMEM    = 0x0002
-            def BIT_ALARM         = 0x0001
-            
-            if (bitfield & BIT_ARMEDSTAY)
-            {
-                sendEvent(name: "partitionStatus", value: "armedstay")
-                sendEvent(name: "contact", value: "closed")
-                sendEvent(name: "switch", value: "on")
-            }
-            else if (bitfield & BIT_READY)
-            {
-                sendEvent(name: "partitionStatus", value: "ready")
-                sendEvent(name: "contact", value: "open")
-                sendEvent(name: "switch", value: "off")
-                closeAllZones()
-                state.notreadyCount = 0
-            }
-            else if (bitfield & BIT_ARMEDINSTANT)
-            {
-                sendEvent(name: "partitionStatus", value: "armedstay")
-                sendEvent(name: "contact", value: "closed")
-                sendEvent(name: "switch", value: "on")
-            }
-            else if (bitfield & BIT_ARMEDAWAY)
-            {
-                sendEvent(name: "partitionStatus", value: "armedaway")
-                sendEvent(name: "contact", value: "closed")
-                sendEvent(name: "switch", value: "on")
-            }
-            else if (bitfield & BIT_ALARMINMEM)
-            {
-                sendEvent(name: "partitionStatus", value: "alarmed")
-            }
-            else if (bitfield & BIT_ALARM)
-            {
-                sendEvent(name: "partitionStatus", value: "alarming")
-            }
-            else
-            {
-                //NotReady - increase the count
-                state.notreadyCount = state.notreadyCount + 1
-                if (state.notreadyCount > 3) 
-                {
-                    sendEvent(name: "partitionStatus", value: "notready")
-                }
-                sendEvent(name: "contact", value: "open")
-                sendEvent(name: "switch", value: "off")
-            }
-            
-            if (bitfield & BIT_CHIME)
-            {
-                sendEvent(name: "chimeStatus", value: "on")
-            }
-            else
-            {
-                sendEvent(name: "chimeStatus", value: "off")
-            }
-            
-            def zoneNum = fields[3]
-            
-            if (fields[5])
-            {
-                sendEvent(name: "keypadText", value: "${fields[5]}", displayed: false)
+        if (fields[0] == "00" && fields[1] == "01") {
+            parseBitField(Integer.decode("0x" + fields[2]));
 
-                Integer currentZone = 0
-
-                //Now parse the "CHECK/FAULT zone" text info
-                if (fields[5].matches("(.*)CHECK ${zoneNum}(.*)")) {
-                    //Update the Zone status
-                    currentZone = zoneNum.toInteger()
-                    getChildDevices()?.each { 
-                        if (it.deviceNetworkId == "Honeywell-Zone-${currentZone}") {
-                            log.debug "Set Zone ${currentZone} in CHECK state"
-                            it.zone("check")
-                            it.label = fields[5].replaceAll("(.*)CHECK", "Zone")
-                        }
-                    }
-                } else if (fields[5].matches("(.*)FAULT ${zoneNum}(.*)")) {
-                    //Update the Zone status
-                    currentZone = zoneNum.toInteger()
-                    getChildDevices()?.each { 
-                        if (it.deviceNetworkId == "Honeywell-Zone-${currentZone}") {
-                            log.debug "Set Zone ${currentZone} in Open state"
-                            it.zone("open")
-                            it.label = fields[5].replaceAll("(.*)FAULT", "Zone")
-                        }
-                    }
-                }
-
-                if (currentZone) {
-                    //Check whether the keypad zone info update is displayed from the beginning (the smallest zone)
-                    if (!state.activeZoneList.isEmpty()) {
-                        def lastZone = state.activeZoneList.pop()
-                        state.activeZoneList.add(lastZone)                        
-                        if (currentZone < lastZone) {
-                            //The zone info is displayed from the beginning. 
-                            //All the other zones which are not in this list should be set to closed.
-
-                            getChildDevices()?.each { 
-                                if (it.deviceNetworkId.matches("Honeywell-Zone-(.*)")) {
-                                    def z = it.deviceNetworkId.substring(15).toInteger()
-                                    if (z && (!state.activeZoneList.contains(z))) {
-                                        log.debug("Set Zone ${z} Closed")
-                                        it.zone("closed")
-                                    }
-                                }
-                            }
-
-                            //Clear the list
-                            while (!state.activeZoneList.isEmpty())
-                            {
-                                state.activeZoneList.pop()
-                            }
-                        }
-                    }
- 
-                    //Add current zone to the list
-                    state.activeZoneList.add(currentZone)
-                }
-
+            if (fields[5]) {
+                //fields[3]: zone number, fields[5] Alpha field
+                parseAlphaField(fields[3], fields[5])
             }
-        
         } else if (fields[0] == "01") {
-            //Zone Status Command - only parse the first 8 bytes (64 zones)
-            def statusBits = Long.reverseBytes(Long.parseLong(fields[1].substring(0,16), 16))
-            def statusMap = [
-                '0' : "closed",
-                '1' : "open",
-                '2' : "closed",
-                '3' : "alarm"
-            ]
-            
-            getChildDevices()?.each { 
-                if (it.deviceNetworkId.matches("Honeywell-Zone-(.*)")) {
-                    log.debug "Updating Zone: ${it.deviceNetworkId}"
-                    def zoneNum = it.deviceNetworkId.substring(15).toInteger()
-                    if (zoneNum) {
-                        it.zone(statusMap."${((statusBits >> (zoneNum - 1)) & 0x1) + ((device.currentValue("partitionStatus") == "alarming") ? 2 : 0)}")
-                    }
-                }
-            }
-            
+            //Parse Zone Status Command
+            parseZoneStatusCommand(fields[1])
         }
     }    
+}
+
+private void parseBitField(bitfield) {
+    def BIT_ARMEDSTAY     = 0x8000
+    def BIT_LOWBATTERY    = 0x4000
+    def BIT_FIRE          = 0x2000
+    def BIT_READY         = 0x1000
+    def BIT_TROUBLE       = 0x0200
+    def BIT_FIREALARM     = 0x0100
+    def BIT_ARMEDINSTANT  = 0x0080
+    def BIT_CHIME         = 0x0020
+    def BIT_BYPASS        = 0x0010
+    def BIT_ACPRESENT     = 0x0008
+    def BIT_ARMEDAWAY     = 0x0004
+    def BIT_ALARMINMEM    = 0x0002
+    def BIT_ALARM         = 0x0001
+    
+    if (bitfield & BIT_ARMEDSTAY) {
+        sendEvent(name: "partitionStatus", value: "armedstay")
+        sendEvent(name: "contact", value: "closed")
+        sendEvent(name: "switch", value: "on")
+    } else if (bitfield & BIT_READY) {
+        sendEvent(name: "partitionStatus", value: "ready")
+        sendEvent(name: "contact", value: "open")
+        sendEvent(name: "switch", value: "off")
+        closeAllZones()
+        state.notreadyCount = 0
+    } else if (bitfield & BIT_ARMEDINSTANT) {
+        sendEvent(name: "partitionStatus", value: "armedstay")
+        sendEvent(name: "contact", value: "closed")
+        sendEvent(name: "switch", value: "on")
+    } else if (bitfield & BIT_ARMEDAWAY) {
+        sendEvent(name: "partitionStatus", value: "armedaway")
+        sendEvent(name: "contact", value: "closed")
+        sendEvent(name: "switch", value: "on")
+    } else if (bitfield & BIT_ALARMINMEM) {
+        sendEvent(name: "partitionStatus", value: "alarmed")
+    } else if (bitfield & BIT_ALARM) {
+        sendEvent(name: "partitionStatus", value: "alarming")
+    } else {
+        //NotReady - increase the count
+        state.notreadyCount = state.notreadyCount + 1
+        if (state.notreadyCount > 3) 
+        {
+            sendEvent(name: "partitionStatus", value: "notready")
+        }
+        sendEvent(name: "contact", value: "open")
+        sendEvent(name: "switch", value: "off")
+    }
+    
+    if (bitfield & BIT_CHIME) {
+        sendEvent(name: "chimeStatus", value: "on")
+    } else {
+        sendEvent(name: "chimeStatus", value: "off")
+    }
+}
+
+private void parseAlphaField(zoneNum, alphaField) {
+    sendEvent(name: "keypadText", value: "${alphaField}", displayed: false)
+
+    Integer currentZone = 0
+
+    //Now parse the "CHECK/FAULT zone" text info
+    if (alphaField.matches("(.*)CHECK ${zoneNum}(.*)")) {
+        //Update the Zone status
+        currentZone = zoneNum.toInteger()
+        getChildDevices()?.each { 
+            if (it.deviceNetworkId == "Honeywell-Zone-${currentZone}") {
+                log.debug "Set Zone ${currentZone} in CHECK state"
+                it.zone("check")
+                it.label = alphaField.replaceAll("(.*)CHECK", "Zone")
+            }
+        }
+    } else if (alphaField.matches("(.*)FAULT ${zoneNum}(.*)")) {
+        //Update the Zone status
+        currentZone = zoneNum.toInteger()
+        getChildDevices()?.each { 
+            if (it.deviceNetworkId == "Honeywell-Zone-${currentZone}") {
+                log.debug "Set Zone ${currentZone} in Open state"
+                it.zone("open")
+                it.label = alphaField.replaceAll("(.*)FAULT", "Zone")
+            }
+        }
+    }
+
+    if (currentZone) {
+        //Check whether the keypad zone info update is displayed from the begining (the smallest zone)
+        def activeZones = state.activeZoneList
+        if (!activeZones.isEmpty()) {
+            def lastZone = activeZones.pop()
+            if ((lastZone) && (currentZone <= lastZone)) {
+                activeZones.add(lastZone)
+                //The zone info is displayed from the begining. 
+                //All the other zones which are not in this list should be set to closed.
+                getChildDevices()?.each { 
+                    if (it.deviceNetworkId.matches("Honeywell-Zone-(.*)")) {
+                        def z = it.deviceNetworkId.substring(15).toInteger()
+                        if (z && (!activeZones.contains(z))) {
+                            log.debug("Set Zone ${z} Closed")
+                            it.zone("closed")
+                        }
+                    }
+                }
+
+                //Clear the list
+                while (!activeZones.isEmpty()) {
+                    activeZones.pop()
+                }
+            }
+        }        
+
+        //Add current zone to the list
+        state.activeZoneList.add(currentZone)
+    }
+}
+
+private void parseZoneStatusCommand(zoneStatusField) {
+    //Zone Status Command - only parse the first 8 bytes (64 zones)
+    def statusBits = Long.reverseBytes(Long.parseLong(zoneStatusField.substring(0,16), 16))
+    def statusMap = [
+        '0' : "closed",
+        '1' : "open",
+        '2' : "closed",
+        '3' : "alarm"
+    ]
+    
+    getChildDevices()?.each { 
+        if (it.deviceNetworkId.matches("Honeywell-Zone-(.*)")) {
+            def zoneNum = it.deviceNetworkId.substring(15).toInteger()
+            if (zoneNum) {
+                def statusVal = ((statusBits >> (zoneNum - 1)) & 0x1) + ((device.currentValue("partitionStatus") == "alarming") ? 2 : 0)
+                it.zone(statusMap.$statusVal)
+                log.debug "Updating Zone: ${zoneNum} to ${statusMap.$statusVal}"
+            }
+        }
+    }
 }
 
 def armAway() {
@@ -420,8 +404,7 @@ def off() {
 def checkDevice() {
     log.debug "CHECK"
 
-    if (!state.responseReceived)
-    {
+    if (!state.responseReceived) {
         //No response recevied from the last check command - it's offline
         state.offlineMinutes = state.offlineMinutes + 1
         sendEvent(name: "partitionStatus", value: "offline")
@@ -430,14 +413,11 @@ def checkDevice() {
         configEvl()
         
         //When no response > 60 mins, suspect the IP is changed, trying to discover again
-        if (state.offlineMinutes >= 60)
-        {
+        if (state.offlineMinutes >= 60) {
             discover()
             state.offlineMinutes = 0
         }
-    }
-    else
-    {
+    } else {
         state.offlineMinutes = 0
     }
     
@@ -481,5 +461,11 @@ private void closeAllZones() {
         if (it.deviceNetworkId.matches("Honeywell-Zone-(.*)")) {
             it.zone("closed")
         }
+    }
+    
+    //Clear the active zone list
+    def activeZones = state.activeZoneList
+    while (!activeZones.isEmpty()) {
+       activeZones.pop()
     }
 }
