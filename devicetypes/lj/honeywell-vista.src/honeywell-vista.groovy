@@ -306,10 +306,10 @@ private void parseAlphaField(zoneNum, alphaField) {
     if (currentZone) {
         //Check whether the keypad zone info update is displayed from the begining (the smallest zone)
         def activeZones = state.activeZoneList
-        if (!activeZones.isEmpty()) {
-            def lastZone = activeZones.pop()
+        def size = activeZones.size()
+        if (size) {
+            def lastZone = activeZones.get(size-1)
             if ((lastZone) && (currentZone <= lastZone)) {
-                activeZones.add(lastZone)
                 //The zone info is displayed from the begining. 
                 //All the other zones which are not in this list should be set to closed.
                 getChildDevices()?.each { 
@@ -327,7 +327,7 @@ private void parseAlphaField(zoneNum, alphaField) {
                     activeZones.pop()
                 }
             }
-        }        
+        }
 
         //Add current zone to the list
         state.activeZoneList.add(currentZone)
