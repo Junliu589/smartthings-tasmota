@@ -354,6 +354,12 @@ private void parseZoneStatusCommand(zoneStatusField) {
             }
         }
     }
+    
+    //Clear the active zone list
+    def activeZones = state.activeZoneList
+    while (!activeZones.isEmpty()) {
+       activeZones.pop()
+    }
 }
 
 def armAway() {
