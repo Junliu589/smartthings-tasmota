@@ -241,7 +241,8 @@ private void parseBitField(bitfield) {
         sendEvent(name: "partitionStatus", value: "ready")
         sendEvent(name: "contact", value: "open")
         sendEvent(name: "switch", value: "off")
-        closeAllZones()
+        //Below has conflict with the Zone Status Command from ENVISA board State Machine.
+        //closeAllZones()
         state.notreadyCount = 0
     } else if (bitfield & BIT_ARMEDINSTANT) {
         sendEvent(name: "partitionStatus", value: "armedstay")
