@@ -241,8 +241,7 @@ private void parseBitField(bitfield) {
         sendEvent(name: "partitionStatus", value: "ready")
         sendEvent(name: "contact", value: "open")
         sendEvent(name: "switch", value: "off")
-        //Below has conflict with the Zone Status Command from ENVISA board State Machine.
-        //closeAllZones()
+        closeAllZones()
         state.notreadyCount = 0
     } else if (bitfield & BIT_ARMEDINSTANT) {
         sendEvent(name: "partitionStatus", value: "armedstay")
@@ -317,9 +316,15 @@ private void parseZoneStatusCommand(zoneStatusField) {
         if (it.deviceNetworkId.matches("Honeywell-Zone-(.*)")) {
             def zoneNum = it.deviceNetworkId.substring(15).toInteger()
             if (zoneNum) {
-                def statusVal = ((statusBits >> (zoneNum - 1)) & 0x1) + ((device.currentValue("partitionStatus") == "alarming") ? 2 : 0)
-                it.zone(statusMap."${statusVal}")
-                log.debug "Updating Zone: ${zoneNum} to ${statusVal}"
+                //def statusVal = ((statusBits >> (zoneNum - 1)) & 0x1) + ((device.currentValue("partitionStatus") == "alarming") ? 2 : 0)
+                //it.zone(statusMap."${statusVal}")
+                //log.debug "Updating Zone: ${zoneNum} to ${statusVal}"
+                //Only use this info to close the zone in the case of "not ready". In the 'ready' statue, all the zones are closed.
+                def statusVal = (statusBits >> (zoneNum - 1)) & 0x1
+                if (0 == statusVal) {
+                     it.zone("closed")
+                     log.debug "Updating Zone: ${zoneNum} to closed"
+                }
             }
         }
     }

@@ -37,6 +37,12 @@ metadata {
 }
 
 def zone(String state) {
+
+  if (state == "closed") {
+    //do nothing
+    return
+  }
+   
   // need to convert open to active and closed to inactive
   def eventMap = [
     'closed':"inactive",
@@ -55,4 +61,10 @@ def zone(String state) {
   def desc = descMap."${state}"
 
   sendEvent (name: "motion", value: "${newState}", descriptionText: "${desc}")
+  
+  runIn(60, closeZone)
+}
+
+def closeZone() {
+  sendEvent (name: "motion", value: "inactive", descriptionText: "Motion Has Stopped")
 }
