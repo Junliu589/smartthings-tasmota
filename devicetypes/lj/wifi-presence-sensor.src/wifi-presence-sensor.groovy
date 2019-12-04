@@ -87,11 +87,11 @@ def checkDevice() {
     state.firstRSSIs = []
     state.lastRSSIs = []
     if (avgFirst - avgLast >= 10)  {
-      sendEvent(name:"contact", value: "closed", descriptionText: "${rssis}")
-    } else {
-      sendEvent(name:"contact", value: "offline", descriptionText: "${rssis}")
-    }
+      sendEvent(name:"contact", value: "closed", descriptionText: "Left")
+    } 
     
+    //for debug
+    sendEvent(name:"rssi", value: "${rssis}")
   }
 
   state.responseReceived = false
