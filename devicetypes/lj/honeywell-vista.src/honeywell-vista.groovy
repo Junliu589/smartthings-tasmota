@@ -192,8 +192,8 @@ def parse(description) {
 
 def parseVistaPannelMsg(msg) {
     def body = msg?.body
-    def startIndex = body.indexOf('%')
-    def endIndex = body.indexOf('$')
+    def startIndex = body?.indexOf('%')
+    def endIndex = body?.indexOf('$')
     
     if (startIndex > 0 && endIndex > startIndex) {
         def pannelMsg = body.substring(startIndex+1, endIndex)
