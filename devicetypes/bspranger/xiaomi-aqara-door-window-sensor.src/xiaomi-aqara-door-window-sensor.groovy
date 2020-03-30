@@ -28,7 +28,6 @@
          capability "Contact Sensor" 
          capability "Battery" 
          capability "Health Check" 
- 
 
          attribute "lastCheckin", "String" 
          attribute "lastCheckinDate", "Date" 
@@ -131,6 +130,16 @@
              sendEvent(name: "lastOpened", value: now, displayed: false) 
              sendEvent(name: "lastOpenedDate", value: nowDate, displayed: false) 
          } 
+
+         //Below is used to set the fake motion sesensor to trigger the Alexa to 
+         //say something after the 'inactivie' for some time.
+         def children = getChildDevices()
+         children?.each { child ->
+             if (child.name == "Dummy Motion Sensor") {
+                child.setStatus(map.value)
+            }
+        }         
+
      } else if (description?.startsWith('catchall:')) { 
          map = parseCatchAllMessage(description) 
      } else if (description?.startsWith('read attr - raw:')) { 
@@ -279,6 +288,9 @@
  	state.battery = 0 
  	if (!batteryRuntime) resetBatteryRuntime(true) 
  	checkIntervalEvent("installed") 
+    
+    addChildDevice("LJ", "Dummy Motion Sensor", "Xiaomi DNI", null, 
+                    [completedSetup: true, label: "Dummy Motion Alex"])
  } 
  
 
