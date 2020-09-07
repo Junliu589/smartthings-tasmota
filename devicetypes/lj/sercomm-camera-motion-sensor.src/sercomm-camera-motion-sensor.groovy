@@ -64,10 +64,12 @@ def configDevice() {
   httpCmd("/adm/set_group.cgi?group=JPEG&mode2=1&resolution2=4&quality_level2=5&frame_rate2=30")
   httpCmd("/adm/set_group.cgi?group=AUDIO&au_trigger_en=1&au_trigger_volume=30")
   httpCmd("/adm/set_group.cgi?group=MOTION&md_mode=1&md_window1=0,0,639,478")
-  httpCmd("/adm/set_group.cgi?group=EVENT&event_trigger=1&event1_entry=is=1|es=0,|et=3|acts=op1:0;op2:0;email:0;ftpu:0;im:0;httpn:1;httppost:0;wlled:0;smbc:0;sd:0;op3:0;op4:0;smbc_rec:0;sd_rec:0|ei=0|ea=mp4,5,15,1|en=motion")
-  httpCmd("/adm/set_group.cgi?group=EVENT&event_trigger=1&event2_entry=is=1|es=0,|et=6|acts=op1:0;op2:0;email:0;ftpu:0;im:0;httpn:1;httppost:0;wlled:0;smbc:0;sd:0;op3:0;op4:0;smbc_rec:0;sd_rec:0|ei=600|ea=mp4,5,15,1|en=PeriodicalEvent")
-  httpCmd("/adm/set_group.cgi?group=HTTP_NOTIFY&http_url=http://192.168.0.7:39500&event_data_flag=1")
+  httpCmd("/adm/set_group.cgi?group=EVENT&event_trigger=1&event1_entry=is=1|es=0,|et=3|acts=op1:0;op2:0;email:1;ftpu:1;im:0;httpn:1;httppost:0;wlled:0;smbc:0;sd:0;op3:0;op4:0;smbc_rec:0;sd_rec:0|ei=0|ea=mp4,5,15,1|en=motion")
+  //httpCmd("/adm/set_group.cgi?group=EVENT&event_trigger=1&event2_entry=is=1|es=0,|et=6|acts=op1:0;op2:0;email:0;ftpu:0;im:0;httpn:1;httppost:0;wlled:0;smbc:0;sd:0;op3:0;op4:0;smbc_rec:0;sd_rec:0|ei=600|ea=mp4,5,15,1|en=PeriodicalEvent")
+  httpCmd("/adm/set_group.cgi?group=HTTP_NOTIFY&http_url=http://192.168.0.3:39500&event_data_flag=1")
   httpCmd("/adm/set_group.cgi?group=HTTP_EVENT&http_event_en=1")
+  httpCmd("/adm/set_group.cgi?group=FTP&ftp1=1&ftp1_server=192.168.0.4&ftp1_account=user1&ftp1_passwd=user1_ftp&ftp1_path=/sda1/camera_frontdoor")
+  httpCmd("/adm/set_group.cgi?group=EMAIL&smtp_enable=1&smtp_server=192.168.0.4&smtp_port=25&smtp_auth=0&from_addr=camera_frontdoor@home.com&to_addr1=rachelcui58@gmail.com&send_email=7&subject=video_captured")  
   
 }
 
