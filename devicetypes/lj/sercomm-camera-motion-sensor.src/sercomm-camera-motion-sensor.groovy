@@ -61,7 +61,8 @@ def configDevice() {
   
   httpCmd("/adm/set_group.cgi?group=SYSTEM&time_zone=7&daylight_saving=1&pir_mode=1&pir_mot_mode=1&pir_mot_timer=1")
   httpCmd("/adm/set_group.cgi?group=UPNP&upnp_mode=0")
-  httpCmd("/adm/set_group.cgi?group=VIDEO&time_stamp=1")
+  def videosetting = "/adm/set_group.cgi?group=VIDEO&time_stamp=1&text_overlay=1&text=" + device.displayName.replaceAll("\\s","%20")
+  httpCmd(videosetting)
   httpCmd("/adm/set_group.cgi?group=H264&mode2=0&mode=1&resolution=4&quality_level=5&frame_rate=30")
   httpCmd("/adm/set_group.cgi?group=JPEG&mode2=1&resolution2=4&quality_level2=5&frame_rate2=30")
   httpCmd("/adm/set_group.cgi?group=AUDIO&au_trigger_en=1&au_trigger_volume=30")
