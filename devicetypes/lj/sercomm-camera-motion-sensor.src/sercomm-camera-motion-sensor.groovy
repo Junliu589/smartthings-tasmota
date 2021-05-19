@@ -1,6 +1,7 @@
 metadata {
   definition (name: "Sercomm Camera Motion Sensor", namespace: "LJ", author: "LJ", vid:"camera-motion-sensor") {
     capability "Motion Sensor"
+    capability "Sensor"
   }
 
   tiles(scale: 2) {

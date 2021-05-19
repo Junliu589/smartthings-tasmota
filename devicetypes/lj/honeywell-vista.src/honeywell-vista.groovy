@@ -286,7 +286,7 @@ private void parseAlphaField(zoneNum, alphaField) {
             if (it.deviceNetworkId == "Honeywell-Zone-${currentZone}") {
                 log.debug "Set Zone ${currentZone} in CHECK state"
                 it.zone("check")
-                it.label = alphaField.replaceAll("(.*)CHECK", "Zone").replaceAll("[ ]+"," ")
+                it.label = alphaField.replaceAll("(.*)CHECK", "").replaceAll("[ ]+"," ")
             }
         }
     } else if (alphaField.matches("(.*)FAULT ${zoneNum}(.*)")) {
@@ -296,7 +296,7 @@ private void parseAlphaField(zoneNum, alphaField) {
             if (it.deviceNetworkId == "Honeywell-Zone-${currentZone}") {
                 log.debug "Set Zone ${currentZone} in Open state"
                 it.zone("open")
-                it.label = alphaField.replaceAll("(.*)FAULT", "Zone").replaceAll("[ ]+"," ")
+                it.label = alphaField.replaceAll("(.*)FAULT", "").replaceAll("[ ]+"," ")
             }
         }
     }
